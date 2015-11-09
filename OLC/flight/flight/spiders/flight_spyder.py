@@ -45,5 +45,8 @@ class FlightSpider(scrapy.Spider):
     def parse_info(self, response):
         item = response.meta['item']
         item['flight_id'] = response.xpath('//meta[@name="og:image"]/@content').extract()[0].split('=')[-1]
+        dds = response.xpath('//div[@id="aircraftinfo"]//dd/text()')
+        item['index'] = dds[-1].extract()
+        item['callsign'] = dds[1].extract()
         return item
 

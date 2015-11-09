@@ -19,6 +19,8 @@ class FlightItem(scrapy.Item):
     kph = scrapy.Field()
     club = scrapy.Field()
     aircraft = scrapy.Field()
+    index = scrapy.Field()
+    callsign = scrapy.Field()
     start = scrapy.Field()
     end = scrapy.Field()
     flight_info = scrapy.Field()
