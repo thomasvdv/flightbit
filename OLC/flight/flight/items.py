@@ -21,5 +21,6 @@ class FlightItem(scrapy.Item):
     aircraft = scrapy.Field()
     start = scrapy.Field()
     end = scrapy.Field()
+    flight_info = scrapy.Field()
     flight_id = scrapy.Field()
     pass
