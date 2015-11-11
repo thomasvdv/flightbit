@@ -4,23 +4,21 @@ from flight.items import FlightItem
 
 class FlightSpider(scrapy.Spider):
 
-
     name = "flight"
     allowed_domains = ["onlinecontest.org"]
     airports = ["ARLIW1", "TWISP1", "WINTH1", "RICLW1", "EPHRA1", "BOULD1", "DEERP1", "VANCV1", "WENAT1", "DAVEW1", "DARRI1"]
     years = range(2007,2016)
-
     start_urls = []
 
     def __init__(self):
-        for y in range(2007,2016):
+        for y in self.years:
             for airport in self.airports:
-                url = "http://www.onlinecontest.org/olc-2.0/gliding/flightsOfAirfield.html?c=US&sc=8&rt=olc&aa=%s&st=olcp&sp=%s#p:0;" % (airport, y)
-                FlightSpider.start_urls.append(url)
+                url = "http://www.onlinecontest.org/olc-2.0/gliding/flightsOfAirfield.html?c=US&sc=8&rt=olc&aa=%s&st=olcp&sp=%s&paging=100000" % (airport, y)
+                self.start_urls.append(url)
 
     def parse(self, response):
         for tr in response.xpath('//table[@id="dailyScore"]//tr'):
-            flight_info = tr.xpath('td[3]//@href').extract()
+            flight_info = tr.xpath('td[10]//@href').extract()
             if flight_info:
                 item = FlightItem()
                 item['airport_id'] = response.url.split('&')[3].split('=')[-1]
@@ -37,10 +35,10 @@ class FlightSpider(scrapy.Spider):
                 item['flight_info'] = tr.xpath('td[10]//@href').extract()[0].split('=')[-1]
 
                 info_page = "http://www.onlinecontest.org/olc-2.0/gliding/flightinfo.html?dsId=%s" % (item['flight_info'])
-                request = scrapy.Request(info_page, callback=self.parse_info)
+                request = scrapy.Request(info_page, dont_filter=True, callback=self.parse_info)
                 request.meta['item'] = item
 
-                return request
+                yield request
 
     def parse_info(self, response):
         item = response.meta['item']
@@ -48,5 +46,5 @@ class FlightSpider(scrapy.Spider):
         dds = response.xpath('//div[@id="aircraftinfo"]//dd/text()')
         item['index'] = dds[-1].extract()
         item['callsign'] = dds[1].extract()
-        return item
+        yield item
 
