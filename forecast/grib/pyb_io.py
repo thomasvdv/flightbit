@@ -217,16 +217,16 @@ def read_gfs_set(directory, area=None, alt0=0, main='gfs_main.grib2',
 
 
 def get_sounding(station_id, date, utc_hour):
-    """Get sounding data using station ID, date and time.
+    """Get forecast data using station ID, date and time.
 
     Data are retrived from Universio of Wyoming. Valid times depend on
-    the station, normal sounding times are 00 and 12 UTC, or 06 and
+    the station, normal forecast times are 00 and 12 UTC, or 06 and
     18 UTC.
 
     Required arguments:
         - station_id -- ID of the station: number or air-port code
         - date -- Date as 3-tuple (yyyy, mm, dd), eg. (2013, 3, 18)
-        - utc_hour -- UTC hour of the requested sounding eg. 6
+        - utc_hour -- UTC hour of the requested forecast eg. 6
 
     Returns:
         - Dictionary containing station coordinates, 'u_winds',
@@ -238,7 +238,7 @@ def get_sounding(station_id, date, utc_hour):
 
     year, month, day = date[0], date[1], date[2]
 
-    url = 'http://weather.uwyo.edu/cgi-bin/sounding?' + \
+    url = 'http://weather.uwyo.edu/cgi-bin/forecast?' + \
         'TYPE=TEXT%3ALIST&YEAR=' + str(year) + '&MONTH=' + \
         '%02d' % month + '&FROM=' + '%02d%02d' % (day, utc_hour) + \
         '&TO=' + '%02d%02d' % (day, utc_hour) + '&STNM=' + str(station_id)
