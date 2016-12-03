@@ -7,7 +7,7 @@ class FlightSpider(scrapy.Spider):
     name = "flight"
     allowed_domains = ["onlinecontest.org"]
     airports = ["ARLIW1", "TWISP1", "WINTH1", "RICLW1", "EPHRA1", "BOULD1", "DEERP1", "VANCV1", "WENAT1", "DAVEW1", "DARRI1"]
-    years = range(2007,2016)
+    years = range(2007,2017)
     start_urls = []
 
     def __init__(self):

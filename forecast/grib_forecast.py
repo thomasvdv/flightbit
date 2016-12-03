@@ -1,5 +1,11 @@
 import pygrib as pg
 import numpy as np
+import simplekml
+from scipy import spatial
+from mpl_toolkits.basemap import Basemap
+import matplotlib.pyplot as plt
+from numpy import linspace
+from numpy import meshgrid
 
 
 def all_and(data):
@@ -18,15 +24,12 @@ def all_and(data):
     return result
 
 
-grib = pg.open("hrrr.t00z.wrfprsf01.grib2")
+grib = pg.open("hrrr.t22z.wrfprsf00.grib2")
 
-for g in grib:
-    print g
+lat0=47.683900
+lon0=-120.935794
 
-lat0=48.162474
-lon0=-122.161616
-
-area = (lat0+1.5, lon0-1.5, lat0-0.5, lon0+1.5)
+area = (lat0+0.1, lon0-0.1, lat0-0.1, lon0+0.1)
 
 
 grib.seek(0)
@@ -89,6 +92,9 @@ altitude = {}
 for msg in g_msgs:
     if msg.typeOfLevel == 'isobaricInhPa':
         altitude[msg.level] = msg.values[row_idx, col_idx]
+    if msg.typeOfLevel == 'surface':
+        alt_surface = msg.values[row_idx, col_idx]
+        print alt_surface
 
 # Collect data to correct altitude order. Set "surface" values
 # before real data.
@@ -123,6 +129,7 @@ for key in pressures:
         dewpoints.append(np.hstack(dewp))
         altitudes.append(np.hstack(alt))
 
+
 # Convert data in lists to Numpy arrays and add them to a
 # dictionary that is returned
 data = {}
@@ -138,8 +145,47 @@ for dat in data['lats']:
     all_pressures.append(100*np.array(pressures)) # Convert hPa to Pa
 data['pressures'] = np.array(all_pressures).transpose()
 
-print len(data['u_winds'][0])
-print len(data['u_winds'])
-print len(data['altitudes'])
-print len(data['lats'])
-print len(data['dewpoints'])
+
+# Build up the thermal index
+data['thermal_index'] = np.array(temperatures)
+for lat in range(0,len(lats)):
+    base_t = -1000
+    base_alt = -1000
+    for pressure in range(0, len(pressures)):
+        t = data['temperatures'][pressure][lat]
+        a = data['altitudes'][pressure][lat]
+        if pressure == 0:
+            base_t = t
+            base_alt = a
+        ti = t-(base_t-((a-base_alt)/1000)*9.8)
+        data['thermal_index'][pressure][lat] = ti
+        print a, ti
+
+# Calculate thermal indexes
+# for a, t in zip(data['altitudes'], data['temperatures']):
+#     thermal_index = {}
+#     for spot_t in t:
+#         base_t = spot_t[0]
+#         base_a =
+#         spot_ti = []
+#         for temp in spot_t:
+#             ti = base_t-((temp-728)/1000)*9.8
+
+
+points = zip(data['lons'], data['lats'])
+closest = points[spatial.KDTree(points).query([lon0,lat0])[1]]
+
+# Find the index of the closest point
+idx = np.where(data['lons']==closest[0])
+
+# Print temperatures
+for a, t, u, v in zip(data['altitudes'],data['temperatures'], data['u_winds'], data['v_winds']):
+    print a[idx][0], '\t', t[idx][0], '\t', u[idx][0], '\t', v[idx][0]
+
+
+kml = simplekml.Kml()
+for lon, lat in zip(data['lons'], data['lats']):
+    kml.newpoint(coords=[(lon,lat)])
+kml.newpoint(name="Closest Point", coords=[closest])
+kml.newpoint(name="POI", coords=[(lon0,lat0)])
+kml.save("grid.kml")

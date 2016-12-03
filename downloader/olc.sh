@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Example: /home/ubuntu/git/flightbit/downloader/olc.sh -i /home/ubuntu/git/flightbit/downloader/flights.csv -o /home/ubuntu/OLC/IGC -u flightbit -p <OLC password>
+
 echo "Starting OLC Download Job."
 
 # Parsing arguments from the command line.
