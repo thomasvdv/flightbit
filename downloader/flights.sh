@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Generates a list of flights to download.
+# Generates a list of flights to download from the scraped list.
 
 while read flights
 do
