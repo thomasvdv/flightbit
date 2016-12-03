@@ -1,2 +1,3 @@
 flightbit-key.json
 .ipynb_checkpoints
+*.grib2
