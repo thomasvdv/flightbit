@@ -6,6 +6,7 @@ from os.path import isfile, join
 
 
 def processIGCs(in_dir, out_dir):
+
     my_igcs = [f for f in listdir(in_dir) if isfile(join(in_dir, f))]
 
     thermals_kml = simplekml.Kml()
@@ -20,8 +21,12 @@ def processIGCs(in_dir, out_dir):
         cf_writer = csv.writer(cf)
         cf_writer.writerow(('geometry', 'distance', 'speed', 'vario', 'alt_diff', 'time'))
 
+        ef = open('{}/errors.csv'.format(out_dir), 'wt')
+        ef_writer = csv.writer(ef)
+
         for my_igc in my_igcs:
-            processIGC(join(in_dir, my_igc), out_dir, thermals_kml, cruise_kml, writer, cf_writer)
+            processIGC(join(in_dir, my_igc), out_dir, thermals_kml, cruise_kml, writer, cf_writer, ef_writer)
+
 
         thermals_kml.save('{}/Cascades Thermals.kml'.format(out_dir))
         cruise_kml.save('{}/Cascades Cruise.kml'.format(out_dir))
@@ -29,9 +34,10 @@ def processIGCs(in_dir, out_dir):
     finally:
         f.close()
         cf.close()
+        ef.close()
 
 
-def processIGC(my_igc, out_dir, thermals_kml, cruise_kml, writer, cf_writer):
+def processIGC(my_igc, out_dir, thermals_kml, cruise_kml, writer, cf_writer, ef_writer):
     flight_id = my_igc.split('/')[-1].split('.')[0]
 
     print("Processing flight {}...".format(flight_id))
@@ -40,6 +46,11 @@ def processIGC(my_igc, out_dir, thermals_kml, cruise_kml, writer, cf_writer):
     kml = simplekml.Kml()
 
     times = flight.times()
+
+    if len(times) == 0:
+        print("Skipping file {}!".format(flight_id))
+        ef_writer.writerow((flight_id))
+        return
 
     for dtime in times:
         takeoff = dtime['takeoff']
@@ -99,4 +110,4 @@ def processIGC(my_igc, out_dir, thermals_kml, cruise_kml, writer, cf_writer):
 
 
 if __name__ == '__main__':
-    processIGCs("/home/vagrant/OLC/IGC", "/media/sf_thomasvdv/Desktop/KML")
+    processIGCs("/home/thomasvdv/OLC/IGC", "/home/thomasvdv/OLC/KML")
