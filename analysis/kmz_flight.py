@@ -13,31 +13,23 @@ def processIGCs(in_dir, out_dir):
     cruise_kml = simplekml.Kml()
 
     try:
-        f = open('{}/Cascades Thermals.csv'.format(out_dir), 'wt')
-        writer = csv.writer(f)
-        writer.writerow(('longitude', 'latitude', 'heigth', 'vario', 'alt_diff', 'time'))
-
-        cf = open('{}/Cascades Cruise.csv'.format(out_dir), 'wt')
-        cf_writer = csv.writer(cf)
-        cf_writer.writerow(('geometry', 'distance', 'speed', 'vario', 'alt_diff', 'time'))
 
         ef = open('{}/errors.csv'.format(out_dir), 'wt')
         ef_writer = csv.writer(ef)
 
         for my_igc in my_igcs:
-            processIGC(join(in_dir, my_igc), out_dir, thermals_kml, cruise_kml, writer, cf_writer, ef_writer)
+            processIGC(join(in_dir, my_igc), out_dir, thermals_kml, cruise_kml, ef_writer)
 
 
-        thermals_kml.save('{}/Cascades Thermals.kml'.format(out_dir))
-        cruise_kml.save('{}/Cascades Cruise.kml'.format(out_dir))
+        thermals_kml.save('{}/thermals.kml'.format(out_dir))
+        cruise_kml.save('{}/glides.kml'.format(out_dir))
 
     finally:
         f.close()
-        cf.close()
         ef.close()
 
 
-def processIGC(my_igc, out_dir, thermals_kml, cruise_kml, writer, cf_writer, ef_writer):
+def processIGC(my_igc, out_dir, thermals_kml, cruise_kml, ef_writer):
     flight_id = my_igc.split('/')[-1].split('.')[0]
 
     print("Processing flight {}...".format(flight_id))
@@ -93,18 +85,12 @@ def processIGC(my_igc, out_dir, thermals_kml, cruise_kml, writer, cf_writer, ef_
                                               coords=[(bottom_lon, bottom_lat, bottom_heigth)],
                                               altitudemode='absolute',
                                               extrude=True)
-                        writer.writerow((bottom_lon, bottom_lat, bottom_heigth, phase['vario'], phase['alt_diff'],
-                                         phase['start_time'].isoformat(' ')))
                     if phase['type'] == 'cruise':
                         if phase['vario'] > 0:
                             cruise_kml.newlinestring(description=str(phase) + "\n" + str(fix),
                                                      coords=[(bottom_lon, bottom_lat, bottom_heigth),
                                                              (top_lon, top_lat, top_heigth)],
                                                      altitudemode='absolute')
-                            cf_writer.writerow((
-                                "<LineString><coordinates>{},{},{} {},{},{}</coordinates></LineString>".format(
-                                    bottom_lon, bottom_lat, bottom_heigth, top_lon, top_lat, top_heigth), phase['distance'],
-                                phase['speed'], phase['vario'], phase['alt_diff'], phase['start_time'].isoformat(' ')))
 
     kml.save('{}/{}.kml'.format(out_dir, flight_id))
 
