@@ -12,7 +12,7 @@ def processIGCs(in_dir, out_dir):
     try:
         f = open('{}/thermals.csv'.format(out_dir), 'wt')
         writer = csv.writer(f)
-        writer.writerow(('longitude', 'latitude', 'heigth', 'vario', 'alt_diff', 'time'))
+        writer.writerow(('flight_id', 'longitude', 'latitude', 'heigth', 'vario', 'alt_diff', 'time'))
 
         ef = open('{}/errors.csv'.format(out_dir), 'wt')
         ef_writer = csv.writer(ef)
@@ -72,7 +72,7 @@ def processIGC(my_igc, out_dir, writer, ef_writer):
                 top_heigth = fix[4]
                 if bottom_lat < 49 and top_lat < 49:
                     if phase['type'] == 'circling':
-                        writer.writerow((bottom_lon, bottom_lat, bottom_heigth, phase['vario'], phase['alt_diff'],
+                        writer.writerow((flight_id, bottom_lon, bottom_lat, bottom_heigth, phase['vario'], phase['alt_diff'],
                                          phase['start_time'].isoformat(' ')))
 
 if __name__ == '__main__':
