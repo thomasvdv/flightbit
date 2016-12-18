@@ -74,7 +74,7 @@ do
         fi
     fi
     echo "Parsing weather info..."
-     if [ -e "${OUTPUT}/CSV/${thermal_id}.csv" ]
+    if [ -e "${OUTPUT}/CSV/${thermal_id}.csv" ]
     then
         echo "Skipping ${thermal_id}.csv"
     else
