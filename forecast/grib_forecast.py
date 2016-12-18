@@ -2,10 +2,8 @@ import pygrib as pg
 import numpy as np
 import simplekml
 from scipy import spatial
-from mpl_toolkits.basemap import Basemap
-import matplotlib.pyplot as plt
-from numpy import linspace
-from numpy import meshgrid
+
+
 
 
 def all_and(data):
@@ -24,7 +22,7 @@ def all_and(data):
     return result
 
 
-grib = pg.open("hrrr.t22z.wrfprsf00.grib2")
+grib = pg.open("rap_130_20120822_2200_001.grb2")
 
 lat0=47.683900
 lon0=-120.935794
