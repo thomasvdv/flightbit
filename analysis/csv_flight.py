@@ -71,7 +71,7 @@ def processIGC(my_igc, out_dir, writer, ef_writer):
                 top_lon = top_fix['longitude']
                 top_lat = top_fix['latitude']
                 top_heigth = fix[4]
-                if bottom_lat < 49 and top_lat < 49:
+                if bottom_lat < 49 and top_lat < 49 and phase['alt_diff'] > 305:
                     if phase['type'] == 'circling':
                         thermal_id = str(uuid.uuid4())
                         writer.writerow((thermal_id, flight_id, bottom_lon, bottom_lat, bottom_heigth, phase['vario'], phase['alt_diff'],
