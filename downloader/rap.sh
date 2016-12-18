@@ -28,7 +28,7 @@ echo INPUT  = "${INPUT}"
 echo OUTPUT     = "${OUTPUT}"
 
 i=1
-while IFS=, read flight_id longitude latitude heigth vario alt_diff thermal_time
+while IFS=, read thermal_id flight_id longitude latitude heigth vario alt_diff thermal_time
 do
     test $i -eq 1 && ((i=i+1)) && continue
     IFS=' ' read -a time_stamp <<< "$thermal_time"
@@ -72,5 +72,17 @@ do
             echo "Failed to download ${grib_file}. Exiting now..."
             exit
         fi
+    fi
+    echo "Parsing weather info..."
+     if [ -e "${OUTPUT}/CSV/${thermal_id}.csv" ]
+    then
+        echo "Skipping ${thermal_id}.csv"
+    else
+        grib_ls -m -l ${latitude},${longitude},1 -p paramId,level ${OUTPUT}/GRIB/${grib_file} > ${OUTPUT}/CSV/${thermal_id}.csv
+        tail -n +2 ${OUTPUT}/CSV/${thermal_id}.csv > ${OUTPUT}/CSV/${thermal_id}.csv.tmp
+        head -316 ${OUTPUT}/CSV/${thermal_id}.csv.tmp > ${OUTPUT}/CSV/${thermal_id}.csv
+        gawk '$1=$1' FIELDWIDTHS='12 12 12' OFS=, ${OUTPUT}/CSV/${thermal_id}.csv > ${OUTPUT}/CSV/${thermal_id}.csv.tmp
+        gawk -F, '/,/{gsub(/ /, "", $0); print} ' ${OUTPUT}/CSV/${thermal_id}.csv.tmp > ${OUTPUT}/CSV/${thermal_id}.csv
+        rm ${OUTPUT}/CSV/${thermal_id}.csv.tmp
     fi
 done <${INPUT}
