@@ -7,9 +7,11 @@ from gdalconst import GA_ReadOnly
 from skewt import SkewT
 import os
 import matplotlib.pyplot as plt
+from os.path import expanduser
 
+home = expanduser("~")
 
-thermal_file = "/home/thomasvdv/RAP/CSV/{}.csv"
+thermal_file = home + "/RAP/CSV/{}.csv"
 
 def open_raster(name):
     """
@@ -125,7 +127,7 @@ def process_thermal_wx(thermal):
     df = pd.read_csv(thermal_file.format(thermal.thermal_id))
 
     if len(df.index) < 185:
-        df.to_csv("/home/thomasvdv/RAP/CSV/{}.error".format(thermal.thermal_id))
+        df.to_csv(home + "/RAP/CSV/{}.error".format(thermal.thermal_id))
         return
 
     df['paramId'] = pd.to_numeric(df.paramId, errors='coerce')
@@ -222,7 +224,7 @@ def process_thermal_wx(thermal):
     Plcl, Plfc, P_el, CAPE, CIN = S.get_cape(*parcel[0:4])
     # S.plot_skewt(title=thermal.time)
     plt.title('Test')
-    plt.savefig("/home/thomasvdv/RAP/PNG/{}.png".format(thermal.thermal_id))
+    plt.savefig(home + "/RAP/PNG/{}.png".format(thermal.thermal_id))
     Hlcl = calc_hgt(df_snd, Plcl)
     thermal['H_lcl'] = Hlcl
 
@@ -245,14 +247,14 @@ def process_thermal_wx(thermal):
 if __name__ == '__main__':
     # Find all thermals in the thermals directory.
     # Process each one and add the result to the WX folder
-    output = "/home/thomasvdv/OLC/CSV/thermals_wx.csv"
-    thermal_idx = "/home/thomasvdv/OLC/CSV/thermals.csv"
+    output = home + "/OLC/CSV/thermals_wx.csv"
+    thermal_idx = home + "/OLC/CSV/thermals.csv"
 
     df_thermals = pd.read_csv(thermal_idx)
     df_thermals_wx = pd.DataFrame()
     for idx, thermal in df_thermals.iterrows():
         thermal_id = thermal.thermal_id
-        if os.path.isfile("/home/thomasvdv/RAP/CSV/{}.csv".format(thermal_id)):
+        if os.path.isfile(home + "/RAP/CSV/{}.csv".format(thermal_id)):
             print 'Start processing thermal {}'.format(thermal_id)
             thermal = process_thermal_wx(thermal)
             print thermal
