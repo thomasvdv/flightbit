@@ -5,7 +5,7 @@
       <sourceFolder url="file://$MODULE_DIR$/OLC/flight" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/analysis/SRTM" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 2.7.12 (~/anaconda2/bin/python)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 2.7.12+ (/usr/bin/python2.7)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="BasemapTutorial" />
     <orderEntry type="module" module-name="basemap" />
