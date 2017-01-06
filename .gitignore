@@ -1,6 +1,6 @@
 # Created by .ignore support plugin (hsz.mobi)
 .gitignore
-.idea/workspace.xml
+.idea
 OLC/flight/.~lock.flights.csv#
 OLC/flight/flight/__init__.pyc
 OLC/flight/flight/items.pyc
@@ -18,3 +18,8 @@ nws_precip_ak_20160116.nc
 nws_precip_conus_20160116.nc
 nws_precip_pr_20160116.nc
 /forecast/hrrr.t22z.wrfprsf00.grib2
+/analysis/SRTM/
+.idea/misc.xml
+analysis/SRTM/
+forecast/rap_130_20150809_1600_001.grb2
+forecast/ruc2anl_130_20110512_2100_000.grb2
