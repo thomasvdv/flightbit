@@ -66,3 +66,6 @@ Longitude
 	max:	115 W
 
 
+Notes
+=
+I started with leveraging GRIB_API but found it too slow for parsing data at a particular point. The tools do not appear to support multi-threading. I am switching to wgrib2 to generate CSV files, which should be easier to process. 
