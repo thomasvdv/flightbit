@@ -78,7 +78,8 @@ do
     then
         echo "Skipping ${thermal_id}.csv"
     else
-        grib_ls -m -l ${latitude},${longitude},1 -p paramId,level ${OUTPUT}/GRIB/${grib_file} > ${OUTPUT}/CSV/${thermal_id}.csv
+        wgrib2 ${OUTPUT}/GRIB/${grib_file} -undefine out-box -125:-112 43:49 -grib ${OUTPUT}/GRIB/WA_${grib_file}
+        grib_ls -m -l ${latitude},${longitude},1 -p paramId,level ${OUTPUT}/GRIB/WA_${grib_file} > ${OUTPUT}/CSV/${thermal_id}.csv
         tail -n +2 ${OUTPUT}/CSV/${thermal_id}.csv > ${OUTPUT}/CSV/${thermal_id}.csv.tmp
         head -316 ${OUTPUT}/CSV/${thermal_id}.csv.tmp > ${OUTPUT}/CSV/${thermal_id}.csv
         gawk '$1=$1' FIELDWIDTHS='12 12 12' OFS=, ${OUTPUT}/CSV/${thermal_id}.csv > ${OUTPUT}/CSV/${thermal_id}.csv.tmp
