@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Example: /home/ubuntu/git/flightbit/downloader/rap.sh -i /home/ubuntu/git/flightbit/downloader/thermals.csv -o /home/ubuntu/RAP
+# Example: rap.sh -i ~/OLC/CSV/thermals.csv -o ~/RAP
 
 echo "Starting RAP Download Job."
 

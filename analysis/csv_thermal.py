@@ -1,10 +1,11 @@
 import xcsoar
-import simplekml
 import csv
 import uuid
 from os import listdir
 from os.path import isfile, join
+from os.path import expanduser
 
+home = expanduser("~")
 
 def processThermals(in_dir, out_dir):
 
@@ -78,4 +79,4 @@ def processThermal(my_igc, out_dir, writer, ef_writer):
                                          phase['start_time'].isoformat(' ')))
 
 if __name__ == '__main__':
-    processIGCs("/home/thomasvdv/OLC/IGC", "/home/thomasvdv/OLC/CSV")
+    processThermals("{}/OLC/IGC".format(home), "{}/OLC/CSV".format(home))
