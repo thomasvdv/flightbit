@@ -1,5 +1,5 @@
 import scrapy
-
+from scrapy.crawler import CrawlerProcess
 from flight.items import FlightItem
 
 class FlightSpider(scrapy.Spider):
@@ -48,3 +48,9 @@ class FlightSpider(scrapy.Spider):
         item['callsign'] = dds[1].extract()
         yield item
 
+process = CrawlerProcess({
+    'USER_AGENT': 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)'
+})
+
+process.crawl(FlightSpider)
+process.start()

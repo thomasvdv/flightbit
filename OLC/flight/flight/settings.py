@@ -61,9 +61,9 @@ NEWSPIDER_MODULE = 'flight.spiders'
 
 # Configure item pipelines
 # See http://scrapy.readthedocs.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    'flight.pipelines.SomePipeline': 300,
-#}
+ITEM_PIPELINES = {
+    'flight.pipelines.FlightPipeline': 300,
+}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See http://doc.scrapy.org/en/latest/topics/autothrottle.html

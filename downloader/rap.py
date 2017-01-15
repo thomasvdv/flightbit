@@ -22,7 +22,7 @@ repos = [
     (datetime(2006, 12, 31), "rucanl", "ruc2_252", "grb"),
     (datetime(2007, 12, 31), "rucanl", "ruc2anl_130", "grb2"),
     (datetime(2008, 10, 29), "rucanl", "ruc2_252", "grb"),
-    (datetime(2011, 6, 20), "rucanl", "ruc2anl_130", "grb2"),
+    (datetime(2012, 5, 1), "rucanl", "ruc2anl_130", "grb2"),
     (datetime(2016, 10, 1), "rucanl", "rap_130", "grb2")
 ]
 
