@@ -24,3 +24,4 @@ analysis/SRTM/
 forecast/*.grb2
 analysis/*.grb2
 analysis/.*
+/analysis/.ipynb_checkpoints/
