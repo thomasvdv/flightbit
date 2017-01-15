@@ -21,5 +21,6 @@ nws_precip_pr_20160116.nc
 /analysis/SRTM/
 .idea/misc.xml
 analysis/SRTM/
-forecast/rap_130_20150809_1600_001.grb2
-forecast/ruc2anl_130_20110512_2100_000.grb2
+forecast/*.grb2
+analysis/*.grb2
+analysis/.*
