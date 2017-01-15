@@ -21,7 +21,7 @@ class FlightSpider(scrapy.Spider):
             flight_info = tr.xpath('td[10]//@href').extract()
             if flight_info:
                 item = FlightItem()
-                item['airport_id'] = response.url.split('&')[3].split('=')[-1]
+                item['airport_id'] = response.grib_url.split('&')[3].split('=')[-1]
                 item['date'] = tr.xpath('td[1]/text()').extract()
                 item['points'] = tr.xpath('td[2]/text()').extract()[0].strip()
                 item['pilot_name'] = tr.xpath('td[3]/a/text()').extract()[0].strip()

@@ -1,3 +1,6 @@
+'''
+Removes files that could not be processed.
+'''
 import csv
 from os.path import expanduser
 import os
