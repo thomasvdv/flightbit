@@ -47,7 +47,7 @@ NEWSPIDER_MODULE = 'flight.spiders'
 #    'flight.middlewares.MyCustomSpiderMiddleware': 543,
 #}
 
-# Enable or disable downloader middlewares
+# Enable or disable pipeline middlewares
 # See http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
 #DOWNLOADER_MIDDLEWARES = {
 #    'flight.middlewares.MyCustomDownloaderMiddleware': 543,

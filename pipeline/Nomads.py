@@ -50,3 +50,6 @@ class Nomads():
                                                                             self.year, self.month,
                                                                             self.day, grib_file)
         return grib_url
+
+    def grib_model(self):
+        return self.model
