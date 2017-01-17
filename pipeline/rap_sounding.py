@@ -10,12 +10,10 @@ import Nomads as nm
 home = expanduser("~")
 time_format = "%Y-%m-%d %H:%M:%S"
 
-if __name__ == '__main__':
+snd_cols = ['LEVEL', 'HGT', 'TMP', 'RH', 'UGRD', 'VGRD', 'VVEL']
 
-    df_grib = pd.read_csv(home + "/RAP/CSV/" + "d5ea0989-96c1-4351-9fd8-aae68dfd26a4.csv",
-                          names=['START', 'END', 'FIELD', 'LEVEL', 'LON', 'LAT', 'VALUE'])
 
-    snd_cols = ['LEVEL', 'HGT', 'TMP', 'RH', 'UGRD', 'VGRD']
+def processSounding(df_grib):
     df_snd = pd.DataFrame()
 
     snd_series = []
@@ -24,4 +22,18 @@ if __name__ == '__main__':
 
     df_snd = reduce(lambda left, right: pd.merge(left, right, on='LEVEL'), snd_series)
 
-    print df_snd
+    return df_snd
+
+
+if __name__ == '__main__':
+
+    df = pd.read_csv(home + '/OLC/CSV/thermals.csv')
+
+    for i, thermal in df.iterrows():
+        grib_csv = home + "/RAP/CSV/" + thermal.thermal_id + ".csv"
+        if os.path.isfile(grib_csv):
+            df_grib = pd.read_csv(home + "/RAP/CSV/" + thermal.thermal_id + ".csv",
+                                  names=['START', 'END', 'FIELD', 'LEVEL', 'LON', 'LAT', 'VALUE'])
+            df_snd = processSounding(df_grib)
+            df_snd.to_csv(home+"/RAP/SND/" +thermal.thermal_id+".snd.csv")
+
