@@ -21,8 +21,8 @@ if __name__ == '__main__':
         # Check if we have data on the thermal
         has_grib = os.path.isfile(home+"/RAP/GRIB/"+nomads.grib_file())
         has_sounding = os.path.isfile(home+"/RAP/CSV/"+thermal.thermal_id+".csv")
-        inventory.append((thermal.thermal_id, nomads.model, has_grib, has_sounding))
+        inventory.append((thermal.thermal_id, nomads.model, has_grib, has_sounding, nomads.grib_file()))
 
-    df_idx = pd.DataFrame(inventory, columns=['thermal_id', 'model', 'has_grib', 'has_sounding'])
+    df_idx = pd.DataFrame(inventory, columns=['thermal_id', 'model', 'has_grib', 'has_sounding', 'grib_file'])
 
-    print df_idx
+    df_idx.to_csv(home+"/RAP/index.csv", index=False)
