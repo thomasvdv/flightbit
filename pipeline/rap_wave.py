@@ -1,14 +1,14 @@
 '''
 Generates sounding file and thermal statistics
 '''
-from os.path import expanduser
 import os
-import StringIO
-import csv
 import pandas as pd
-import collections
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn; seaborn.set()
 
 snd_cols = ['LEVEL', 'HGT', 'TMP', 'RH', 'UGRD', 'VGRD', 'VVEL']
+
 
 def valueFromGrib(df_grib, field, level):
     try:
@@ -17,8 +17,8 @@ def valueFromGrib(df_grib, field, level):
         print field, "at", level, "not found."
         return None
 
-def generateRAOB(df_grib, snd_file):
 
+def generateRAOB(df_grib, snd_file):
     snd_time = df_grib.iloc[0]['START']
     snd_lon = df_grib.iloc[0]['LON']
     snd_lat = df_grib.iloc[0]['LAT']
@@ -41,37 +41,39 @@ def generateRAOB(df_grib, snd_file):
     # Sort by level
     df_snd = df_snd.sort_values(['LEVEL'], ascending=[0])
 
+    # Heigth in feet
+    df_snd['HGT_FT'] = df_snd.HGT * 3.28084
+
+    # Round the relative humidity
     df_snd['RH'] = df_snd['RH'].astype(int)
 
-    m = collections.OrderedDict()
-    m['LEVEL'] = 'PRES'
-    m['TMP'] = 'TEMP'
-    m['RH'] = 'RH'
-    m['UGRD'] = 'UU'
-    m['VGRD'] = 'VV'
-    m['HGT'] = 'GPM'
-    m['VVEL'] = 'WSPEED'
+    # Wind Speed
+    df_snd['W_SPD_MS'] = (df_snd.UGRD ** 2 + df_snd.VGRD ** 2) ** (0.5)
 
-    df_raob = pd.DataFrame(columns=m.values())
-    for key, value in m.iteritems():
-        df_raob[value] = df_snd[key].copy()
+    # Wind Direction
+    df_snd['W_DIR'] = np.arctan2(df_snd.UGRD, df_snd.VGRD) * (180. / np.pi)
 
-    raob_file = snd_file + ".raob"
-    df_raob.to_csv(raob_file, index=False)
+    # Temperature in Celcius
+    df_snd['TMP_C'] = df_snd.TMP - 273.15
 
-    headers = [["RAOB/CSV"], ["DTG", snd_time], ["LAT", snd_lat, "N"],
-               ["LON", abs(snd_lon), "W"], ["ELEV", int(snd_hgt), "M"], ["TEMPERATURE", "K"],
-               ["MOISTURE", "RH"], ["WIND", "kts", "U/V"], ["RAOB/DATA"]]
+    # Scorer Parameter
+    Ys = []
+    for i, row in df_snd.iterrows():
+        if (i < len(df_snd.index) - 1):
+            Ys.append((df_snd.TMP_C.iloc[i + 1] - df_snd.TMP_C.iloc[i]) / (df_snd.HGT.iloc[i] - df_snd.HGT.iloc[i + 1]))
+    df_snd['Y'] = pd.Series(Ys)
 
-    header = StringIO.StringIO()
-    writer = csv.writer(header, lineterminator=os.linesep)
-    for h in headers:
-        writer.writerow(h)
+    df_snd['Y2'] = (((0.00986 - df_snd.Y) / df_snd.TMP) * (9.81 / df_snd.W_SPD_MS ** 2) - (1 / 4) * (
+        (9.81 / 287 - df_snd.Y) / df_snd.TMP) ** 2) * 100000
 
-    with file(raob_file, 'r') as original:
-        data = original.read()
-    with file(raob_file, 'w') as modified:
-        modified.write(header.getvalue() + data)
+    wave_file = snd_file + ".wave"
+    df_snd.to_csv(wave_file, index=False)
+
+    # Plot the Scorer Parameter
+    ax = df_snd.plot(x='Y2', y='HGT_FT', xlim=(0,0.3), ylim=(0,18000), title="Scorer Parameter", legend=False)
+    ax.axhline(y=13600,  c="blue", linewidth=2.0, zorder=0)
+    fig = ax.get_figure()
+    fig.savefig(snd_file + '.png')
 
 
 if __name__ == '__main__':

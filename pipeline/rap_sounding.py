@@ -7,6 +7,7 @@ import StringIO
 import csv
 import pandas as pd
 import numpy as np
+import sys
 from skewt import SkewT
 
 home = expanduser("~")
@@ -20,6 +21,7 @@ def valueFromGrib(df_grib, field, level):
         return df_grib[(df_grib.FIELD == field) & (df_grib.LEVEL == level)].iloc[0]['VALUE']
     except IndexError:
         print field, "at", level, "not found."
+        return None
 
 
 def dew_point(df_snd):
@@ -28,19 +30,6 @@ def dew_point(df_snd):
 
     pa = df_snd.RH / 100. * np.exp(df_snd.DPT_A * df_snd.TMP_C / (df_snd.DPT_B + df_snd.TMP_C))
     df_snd['DPT_C'] = df_snd.DPT_B * np.log(pa) / (df_snd.DPT_A - np.log(pa))
-
-
-def calc_hgt(df_snd, p):
-    upper_hgt, upper_level = df_snd.loc[df_snd['LEVEL'] <= p].iloc[0][['HGT', 'LEVEL']]
-    lower_hgt, lower_level = df_snd.loc[df_snd['LEVEL'] >= p].iloc[-1][['HGT', 'LEVEL']]
-    lvls = range(int(upper_level), int(lower_level) + 1)
-    hghts = np.empty(len(lvls))
-    hghts[:] = np.NAN
-    hghts[0] = upper_hgt
-    hghts[-1] = lower_hgt
-    df_hght = pd.DataFrame({'LEVEL': lvls, 'HGT': hghts}).interpolate()
-    hgt, level = df_hght.loc[df_hght['LEVEL'] == int(p)].iloc[0][['HGT', 'LEVEL']]
-    return hgt
 
 
 def generateSounding(df_grib, df_thermal, idx):
@@ -59,6 +48,7 @@ def generateSounding(df_grib, df_thermal, idx):
 
     # Interpolate on height.
     df_snd['HGT'] = df_snd['HGT'].astype(int)
+    print "Height range:", df_snd.HGT.min(), df_snd.HGT.max()
     new_index = pd.Index(range(df_snd.HGT.min(), df_snd.HGT.max(), 1), name='HGT')
     df_snd = df_snd.set_index('HGT').reindex(new_index).reset_index()
     df_snd = df_snd.interpolate()
@@ -127,7 +117,7 @@ def generateSounding(df_grib, df_thermal, idx):
     # Russell Pearson Thermal Heigth
     lift_RPe = (133.72 + 1.03 * (lift_top * 3.28084)) * 0.3048
     df_thermal.set_value(idx, 'THERMAL_RPe_M', lift_RPe)
-    print "Set THERMAL_RPe_M at", idx, "to", lift_RPe
+    print "Set THERMAL_RPe_M at to", lift_RPe
 
     # Mario Piccagli Thermal Heigth
     lift_MPi = (1580 + (0.57 * lift_top)) * 0.3048
@@ -139,7 +129,7 @@ def generateSounding(df_grib, df_thermal, idx):
     df_thermal.set_value(idx, 'SFC_DPT', sfc_dpt)
 
     # Generate the output
-    df_snd.to_csv(home + "/RAP/SND/" + thermal.thermal_id + ".snd.csv", index=False)
+    # df_snd.to_csv(home + "/RAP/SND/" + thermal.thermal_id + ".snd.csv", index=False)
     return df_snd
 
 
@@ -147,12 +137,20 @@ if __name__ == '__main__':
 
     df_thermal = pd.read_csv(home + '/OLC/CSV/thermals.csv')
 
+    f = open(home+'/OLC/CSV/thermal_errors.txt', 'w')
+
     for idx, thermal in df_thermal.iterrows():
         grib_csv = home + "/RAP/CSV/" + thermal.thermal_id + ".csv"
         if os.path.isfile(grib_csv):
             print "Processing", thermal.thermal_id
             df_grib = pd.read_csv(home + "/RAP/CSV/" + thermal.thermal_id + ".csv",
                                   names=['START', 'END', 'FIELD', 'LEVEL', 'LON', 'LAT', 'VALUE'])
-            generateSounding(df_grib, df_thermal, idx)
+            try:
+                generateSounding(df_grib, df_thermal, idx)
+            except:
+                f.write(thermal.thermal_id+'\n')
+                f.write(str(sys.exc_info()[0])+'\n\n')
+                continue
 
     df_thermal.to_csv(home + '/OLC/CSV/thermal_stats.csv')
+    f.close()

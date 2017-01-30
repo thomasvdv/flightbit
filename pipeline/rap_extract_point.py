@@ -35,6 +35,7 @@ def extractPoint(thermal):
     # Point to the converted grb->grib2 file if needed
     if nomads.ext == "grb":
         grib_file += ".grb2"
+    grib_file += ".c3"
 
     if os.path.isfile(grib_file):
         cmd = ["wgrib2", grib_file, "-irr_grid", str(thermal.longitude) + ":" + str(thermal.latitude), "1000", "-", "|", "wgrib2",
@@ -54,6 +55,7 @@ if __name__ == '__main__':
         if not os.path.isfile(home + "/RAP/CSV/" + thermal.thermal_id + ".csv"):
             cmds.add(extractPoint(thermal))
     print "Extracting", len(cmds), "points..."
+
     pool = Pool(8)  # 8 concurrent commands at a time
     for i, returncode in enumerate(pool.imap(partial(call, shell=True), cmds)):
         if returncode != 0:

@@ -73,3 +73,10 @@ I started with leveraging GRIB_API but found it too slow for parsing data at a p
 Time bounds:
 
 17Z through 3Z
+
+Swiss Thermal Hot spots: http://thermal.kk7.ch/
+XCSoar Custom Map: http://www.dotmana.com/weblog/2014/07/xcsoar-generate-custom-maps/
+
+Mt Pilchuck:
+48.058099
+-121.796903
