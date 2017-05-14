@@ -7,7 +7,8 @@ import subprocess
 from os.path import expanduser
 
 home = expanduser("~")
-grib_dir = "/media/thomasvdv/DATA/RAP/"
+#grib_dir = "/media/thomasvdv/DATA/RAP/"
+grib_dir = "/home/thomasvdv/grib/"
 
 
 def removeRecord(grib, skip):
@@ -38,7 +39,7 @@ def checkGrib(grib):
 
 
 if __name__ == '__main__':
-    gribs = [f for f in listdir(grib_dir) if f.endswith(".grb2")]
+    gribs = [f for f in listdir(grib_dir) if f.endswith(".grib2")]
     print len(gribs)
     for grib in gribs:
         checkGrib(grib)
