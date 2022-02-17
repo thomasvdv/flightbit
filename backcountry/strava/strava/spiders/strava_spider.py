@@ -12,8 +12,8 @@ import datetime
 def authentication_failed(response):
     pass
 
-class StravaSpider(scrapy.Spider):
 
+class StravaSpider(scrapy.Spider):
     name = "strava"
 
     gpx_root = "athletes"
@@ -53,7 +53,6 @@ class StravaSpider(scrapy.Spider):
 
     def parse_segment(self, response):
 
-        '''
         athletes = response.css('.athlete a::attr(href)').getall()
         for athlete in athletes:
             athlete_id = athlete.split('/')[-1]
@@ -63,7 +62,6 @@ class StravaSpider(scrapy.Spider):
                 athlete_page = 'https://www.strava.com' + athlete
                 request = scrapy.Request(url=athlete_page, dont_filter=True, callback=self.parse_athlete)
                 yield request
-        '''
 
         next_page = response.xpath("//li[@class='next_page']//@href").extract()
 
@@ -111,10 +109,10 @@ class StravaSpider(scrapy.Spider):
         activity_month = activity_fmonth[0]
         activity_day = activity_fmonth[1].strip().zfill(2)
 
-
         activity_date = datetime.datetime.strptime(f"{activity_day} {activity_month} {activity_year}", '%d %B %Y')
 
-        activity_json = {"activity_id" : activity_id, "athlete_id" : athlete_id, "activity_date" : activity_date.strftime("%Y%m%d")}
+        activity_json = {"activity_id": activity_id, "athlete_id": athlete_id,
+                         "activity_date": activity_date.strftime("%Y%m%d")}
         if segment_ids:
             activity_json["segments"] = segment_ids
         with open(f'{self.gpx_root}/{athlete_id}/{activity_id}.json', 'w') as outfile:
