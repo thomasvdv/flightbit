@@ -4,3 +4,4 @@ analysis/SRTM/
 analysis/*.grb2
 .ipynb_checkpoints/
 
+/backcountry/strava/athletes/
