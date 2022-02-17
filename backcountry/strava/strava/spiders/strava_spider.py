@@ -46,16 +46,14 @@ class StravaSpider(scrapy.Spider):
 
         # continue scraping with authenticated session...
 
-        segment_page = 'https://www.strava.com/segments/3700913/leaderboard?filter=overall&page=1&page_uses_modern_javascript=false&per_page=100&partial=false'
+        segment_page = 'https://www.strava.com/segments/3700913/leaderboard?filter=overall&page=1&page_uses_modern_javascript=true&per_page=100&partial=true'
         request = scrapy.Request(segment_page, dont_filter=True, callback=self.parse_segment)
 
         yield request
 
     def parse_segment(self, response):
 
-        self.logger.info("SCRAPING: " + response.url)
-
-        """
+        '''
         athletes = response.css('.athlete a::attr(href)').getall()
         for athlete in athletes:
             athlete_id = athlete.split('/')[-1]
@@ -65,12 +63,12 @@ class StravaSpider(scrapy.Spider):
                 athlete_page = 'https://www.strava.com' + athlete
                 request = scrapy.Request(url=athlete_page, dont_filter=True, callback=self.parse_athlete)
                 yield request
-        """
+        '''
 
-        next_page = response.xpath("//li[@class='next_page']//@href").extract()[0]
-        self.logger.info("NEXT: " + next_page)
+        next_page = response.xpath("//li[@class='next_page']//@href").extract()
 
-        if len(next_page) > 1:
+        if len(next_page) > 0:
+            next_page = next_page[0] + "&partial=true"
             yield scrapy.Request("https://www.strava.com" + next_page, dont_filter=True, callback=self.parse_segment)
 
     def parse_gpx(self, response, athlete_id, activity_id):
