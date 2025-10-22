@@ -18,6 +18,23 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
+        // Unit conversion functions
+        const convertSpeed = (mph, toMetric) => {
+            return toMetric ? mph * 1.60934 : mph; // MPH to KPH
+        };
+
+        const convertSinkRate = (knots, toMetric) => {
+            return toMetric ? knots * 0.514444 : knots; // Knots to m/s
+        };
+
+        const convertSinkRateFPS = (fps, toMetric) => {
+            return toMetric ? fps * 0.3048 : fps; // FPS to m/s
+        };
+
+        const getSpeedUnit = (metric) => metric ? 'km/h' : 'MPH';
+        const getSinkRateUnit = (metric) => metric ? 'm/s' : 'knots';
+        const getSinkRateFPSUnit = (metric) => metric ? 'm/s' : 'FPS';
+
         // Preset glider data
         const PRESET_GLIDERS = {
             'SGS 1-34': {
@@ -140,6 +157,7 @@
             const [sinkRateRange, setSinkRateRange] = useState({ min: 0, max: -5, step: -1 });
             const [results, setResults] = useState(null);
             const [showAdvanced, setShowAdvanced] = useState(false);
+            const [useMetric, setUseMetric] = useState(false);
             const chartRef = useRef(null);
             const chartInstance = useRef(null);
 
@@ -190,8 +208,11 @@
                         return {
                             airSinkRate,
                             speed: Math.round(speed * 10) / 10,
+                            speedMetric: Math.round(convertSpeed(speed, true) * 10) / 10,
                             gliderSinkKnots: Math.round(gliderSinkKnots * 100) / 100,
+                            gliderSinkMetric: Math.round(convertSinkRate(gliderSinkKnots, true) * 100) / 100,
                             totalSinkKnots: Math.round(totalSinkKnots * 100) / 100,
+                            totalSinkMetric: Math.round(convertSinkRate(totalSinkKnots, true) * 100) / 100,
                             glideRatio: Math.round(glideRatio * 10) / 10
                         };
                     });
@@ -287,7 +308,7 @@
                                 x: {
                                     title: {
                                         display: true,
-                                        text: 'Airspeed (MPH)',
+                                        text: `Airspeed (${getSpeedUnit(useMetric)})`,
                                         font: { size: 14, weight: 'bold' }
                                     },
                                     min: 0,
@@ -297,7 +318,7 @@
                                 y: {
                                     title: {
                                         display: true,
-                                        text: 'Vertical Speed (knots)',
+                                        text: `Vertical Speed (${getSinkRateUnit(useMetric)})`,
                                         font: { size: 14, weight: 'bold' }
                                     },
                                     reverse: true,
@@ -320,7 +341,7 @@
                                 tooltip: {
                                     callbacks: {
                                         label: function(context) {
-                                            return `${context.dataset.label}: (${context.parsed.x.toFixed(1)} MPH, ${context.parsed.y.toFixed(2)} knots)`;
+                                            return `${context.dataset.label}: (${context.parsed.x.toFixed(1)} ${getSpeedUnit(useMetric)}, ${context.parsed.y.toFixed(2)} ${getSinkRateUnit(useMetric)})`;
                                         }
                                     }
                                 }
@@ -334,16 +355,38 @@
                         chartInstance.current.destroy();
                     }
                 };
-            }, [results, selectedGlider]);
+            }, [results, selectedGlider, useMetric]);
 
             return (
                 <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
                     <div className="max-w-7xl mx-auto">
                         {/* Header */}
                         <div className="text-center mb-8">
-                            <h1 className="text-4xl font-bold text-gray-800 mb-2">
-                                Glider Polar Speed-to-Fly Calculator
-                            </h1>
+                            <div className="flex justify-center items-center gap-4 mb-4">
+                                <h1 className="text-4xl font-bold text-gray-800">
+                                    Glider Polar Speed-to-Fly Calculator
+                                </h1>
+                                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow">
+                                    <span className={`text-sm font-semibold ${!useMetric ? 'text-blue-600' : 'text-gray-400'}`}>
+                                        Imperial
+                                    </span>
+                                    <button
+                                        onClick={() => setUseMetric(!useMetric)}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                            useMetric ? 'bg-blue-600' : 'bg-gray-300'
+                                        }`}
+                                    >
+                                        <span
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                                useMetric ? 'translate-x-6' : 'translate-x-1'
+                                            }`}
+                                        />
+                                    </button>
+                                    <span className={`text-sm font-semibold ${useMetric ? 'text-blue-600' : 'text-gray-400'}`}>
+                                        Metric
+                                    </span>
+                                </div>
+                            </div>
                             <p className="text-gray-600">
                                 Calculate optimal speeds for different sink rates using mathematical polar analysis
                             </p>
@@ -377,7 +420,7 @@
                                     {/* Speed Data */}
                                     <div className="mb-4">
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                            Speeds (MPH)
+                                            Speeds ({getSpeedUnit(useMetric)})
                                         </label>
                                         <textarea
                                             value={speeds}
@@ -392,7 +435,7 @@
                                     {/* Sink Rate Data */}
                                     <div className="mb-4">
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                            Sink Rates (FPS)
+                                            Sink Rates ({getSinkRateFPSUnit(useMetric)})
                                         </label>
                                         <textarea
                                             value={sinkRates}
@@ -401,7 +444,9 @@
                                             rows="3"
                                             placeholder="3, 2.38, 2.4, 2.5, 2.9..."
                                         />
-                                        <p className="text-xs text-gray-500 mt-1">Feet per second</p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            {useMetric ? 'Meters per second' : 'Feet per second'}
+                                        </p>
                                     </div>
 
                                     {/* Advanced Options Toggle */}
@@ -415,7 +460,7 @@
                                     {showAdvanced && (
                                         <div className="mb-4 p-3 bg-gray-50 rounded-md">
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                Sink Rate Range (knots)
+                                                Sink Rate Range ({getSinkRateUnit(useMetric)})
                                             </label>
                                             <div className="grid grid-cols-3 gap-2">
                                                 <div>
@@ -487,16 +532,16 @@
                                                 <thead className="bg-gray-100">
                                                     <tr>
                                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                                                            Air Sink Rate<br/>(knots)
+                                                            Air Sink Rate<br/>({getSinkRateUnit(useMetric)})
                                                         </th>
                                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                                                            Speed to Fly<br/>(MPH)
+                                                            Speed to Fly<br/>({getSpeedUnit(useMetric)})
                                                         </th>
                                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                                                            Glider Sink<br/>(knots)
+                                                            Glider Sink<br/>({getSinkRateUnit(useMetric)})
                                                         </th>
                                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                                                            Total Sink<br/>(knots)
+                                                            Total Sink<br/>({getSinkRateUnit(useMetric)})
                                                         </th>
                                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">
                                                             Glide Ratio
@@ -507,11 +552,20 @@
                                                     {results.calculations.map((calc, idx) => (
                                                         <tr key={idx} className="hover:bg-gray-50">
                                                             <td className="px-4 py-3 font-semibold">
-                                                                {calc.airSinkRate === 0 ? '0 (Best Glide)' : calc.airSinkRate}
+                                                                {calc.airSinkRate === 0 ? '0 (Best Glide)' : 
+                                                                    useMetric ? 
+                                                                        Math.round(convertSinkRate(calc.airSinkRate, true) * 100) / 100 : 
+                                                                        calc.airSinkRate}
                                                             </td>
-                                                            <td className="px-4 py-3">{calc.speed}</td>
-                                                            <td className="px-4 py-3">{calc.gliderSinkKnots}</td>
-                                                            <td className="px-4 py-3">{calc.totalSinkKnots}</td>
+                                                            <td className="px-4 py-3">
+                                                                {useMetric ? calc.speedMetric : calc.speed}
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                {useMetric ? calc.gliderSinkMetric : calc.gliderSinkKnots}
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                {useMetric ? calc.totalSinkMetric : calc.totalSinkKnots}
+                                                            </td>
                                                             <td className="px-4 py-3 font-semibold text-blue-600">
                                                                 {calc.glideRatio}:1
                                                             </td>
@@ -524,15 +578,23 @@
                                         {/* Export Button */}
                                         <button
                                             onClick={() => {
-                                                const csv = ['Air Sink (knots),Speed (MPH),Glider Sink (knots),Total Sink (knots),Glide Ratio',
-                                                    ...results.calculations.map(c => 
-                                                        `${c.airSinkRate},${c.speed},${c.gliderSinkKnots},${c.totalSinkKnots},${c.glideRatio}`
-                                                    )].join('\n');
+                                                const speedUnit = getSpeedUnit(useMetric);
+                                                const sinkUnit = getSinkRateUnit(useMetric);
+                                                const csv = [
+                                                    `Air Sink (${sinkUnit}),Speed (${speedUnit}),Glider Sink (${sinkUnit}),Total Sink (${sinkUnit}),Glide Ratio`,
+                                                    ...results.calculations.map(c => {
+                                                        const airSink = useMetric ? Math.round(convertSinkRate(c.airSinkRate, true) * 100) / 100 : c.airSinkRate;
+                                                        const speed = useMetric ? c.speedMetric : c.speed;
+                                                        const gliderSink = useMetric ? c.gliderSinkMetric : c.gliderSinkKnots;
+                                                        const totalSink = useMetric ? c.totalSinkMetric : c.totalSinkKnots;
+                                                        return `${airSink},${speed},${gliderSink},${totalSink},${c.glideRatio}`;
+                                                    })
+                                                ].join('\n');
                                                 const blob = new Blob([csv], { type: 'text/csv' });
                                                 const url = URL.createObjectURL(blob);
                                                 const a = document.createElement('a');
                                                 a.href = url;
-                                                a.download = `${selectedGlider.replace(/\s+/g, '_')}_speed_to_fly.csv`;
+                                                a.download = `${selectedGlider.replace(/\s+/g, '_')}_speed_to_fly_${useMetric ? 'metric' : 'imperial'}.csv`;
                                                 a.click();
                                             }}
                                             className="mt-4 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition duration-200"
