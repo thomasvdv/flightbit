@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glider Polar Speed-to-Fly Calculator</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Preset glider data
+        const PRESET_GLIDERS = {
+            'SGS 1-34': {
+                speeds: [41, 45, 49, 52.5, 60, 70, 75, 85, 90, 95, 100],
+                sinkRatesFPS: [3, 2.38, 2.4, 2.5, 2.9, 3.9, 4.5, 6, 7, 8, 9],
+                description: 'Schweizer SGS 1-34 (Data from manual)'
+            },
+            'Custom': {
+                speeds: [40, 50, 60, 70, 80, 90, 100],
+                sinkRatesFPS: [3, 2.5, 2.8, 3.5, 4.5, 6, 8],
+                description: 'Custom glider polar'
+            }
+        };
+
+        // Polynomial fitting function
+        function polyfit(x, y, degree) {
+            const n = x.length;
+            const X = [];
+            
+            for (let i = 0; i < n; i++) {
+                const row = [];
+                for (let j = 0; j <= degree; j++) {
+                    row.push(Math.pow(x[i], degree - j));
+                }
+                X.push(row);
+            }
+            
+            const XT = math.transpose(X);
+            const XTX = math.multiply(XT, X);
+            const XTY = math.multiply(XT, y);
+            
+            try {
+                const coeffs = math.lusolve(XTX, XTY);
+                return coeffs.map(c => c[0]);
+            } catch (e) {
+                console.error('Polyfit error:', e);
+                return Array(degree + 1).fill(0);
+            }
+        }
+
+        // Evaluate polynomial
+        function polyval(coeffs, x) {
+            const degree = coeffs.length - 1;
+            return coeffs.reduce((sum, coeff, i) => {
+                return sum + coeff * Math.pow(x, degree - i);
+            }, 0);
+        }
+
+        // Calculate derivative coefficients
+        function polyder(coeffs) {
+            const degree = coeffs.length - 1;
+            return coeffs.slice(0, -1).map((coeff, i) => {
+                return coeff * (degree - i);
+            });
+        }
+
+        // Find tangent intersection using Newton-Raphson method
+        function findTangentIntersection(polar, polarPrime, targetY, initialGuess = 50) {
+            const maxIterations = 100;
+            const tolerance = 1e-6;
+            let x = initialGuess;
+            
+            for (let i = 0; i < maxIterations; i++) {
+                const fx = polyval(polar, x);
+                const dfx = polyval(polarPrime, x);
+                
+                // Equation: dfx = (fx - targetY) / x
+                // Rearranged: dfx * x - fx + targetY = 0
+                const f = dfx * x - fx + targetY;
+                
+                // Derivative of the equation with respect to x
+                const df = polyval(polyder(polarPrime), x) * x + dfx - dfx;
+                
+                if (Math.abs(f) < tolerance) {
+                    return x;
+                }
+                
+                // More robust approach
+                const numerator = fx - targetY;
+                const denominator = x;
+                const slope = numerator / denominator;
+                const error = dfx - slope;
+                
+                if (Math.abs(error) < tolerance) {
+                    return x;
+                }
+                
+                // Adjust x
+                const dx = -error * x / (polyval(polyder(polarPrime), x) * x + dfx);
+                x = x + dx * 0.5; // Damping factor for stability
+                
+                if (x < 20 || x > 150) {
+                    x = Math.max(20, Math.min(150, x));
+                }
+            }
+            
+            // Fallback: try a simple search
+            let bestX = initialGuess;
+            let bestError = Infinity;
+            
+            for (let testX = 30; testX <= 120; testX += 0.5) {
+                const fx = polyval(polar, testX);
+                const dfx = polyval(polarPrime, testX);
+                const targetSlope = (fx - targetY) / testX;
+                const error = Math.abs(dfx - targetSlope);
+                
+                if (error < bestError) {
+                    bestError = error;
+                    bestX = testX;
+                }
+            }
+            
+            return bestX;
+        }
+
+        function GliderPolarCalculator() {
+            const [selectedGlider, setSelectedGlider] = useState('SGS 1-34');
+            const [speeds, setSpeeds] = useState(PRESET_GLIDERS['SGS 1-34'].speeds.join(', '));
+            const [sinkRates, setSinkRates] = useState(PRESET_GLIDERS['SGS 1-34'].sinkRatesFPS.join(', '));
+            const [sinkRateRange, setSinkRateRange] = useState({ min: 0, max: -5, step: -1 });
+            const [results, setResults] = useState(null);
+            const [showAdvanced, setShowAdvanced] = useState(false);
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+
+            const handleGliderChange = (gliderName) => {
+                setSelectedGlider(gliderName);
+                const glider = PRESET_GLIDERS[gliderName];
+                setSpeeds(glider.speeds.join(', '));
+                setSinkRates(glider.sinkRatesFPS.join(', '));
+            };
+
+            const calculateSpeedToFly = () => {
+                try {
+                    // Parse input data
+                    const speedArray = speeds.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+                    const sinkArray = sinkRates.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+                    
+                    if (speedArray.length < 4 || sinkArray.length < 4) {
+                        alert('Please enter at least 4 data points');
+                        return;
+                    }
+                    
+                    if (speedArray.length !== sinkArray.length) {
+                        alert('Number of speeds must match number of sink rates');
+                        return;
+                    }
+                    
+                    // Convert FPS to knots
+                    const sinkRateKnots = sinkArray.map(fps => fps * 0.592484);
+                    
+                    // Fit 4th order polynomial
+                    const polar = polyfit(speedArray, sinkRateKnots, 4);
+                    const polarPrime = polyder(polar);
+                    
+                    // Generate sink rates to calculate
+                    const sinkRatesToCalc = [];
+                    for (let sr = sinkRateRange.min; sr >= sinkRateRange.max; sr += sinkRateRange.step) {
+                        sinkRatesToCalc.push(sr);
+                    }
+                    
+                    // Calculate speed-to-fly for each sink rate
+                    const calculations = sinkRatesToCalc.map(airSinkRate => {
+                        const speed = findTangentIntersection(polar, polarPrime, airSinkRate, 50);
+                        const gliderSinkKnots = polyval(polar, speed);
+                        const totalSinkKnots = gliderSinkKnots - airSinkRate;
+                        const totalSinkMPH = totalSinkKnots / 0.592484 * 3600 / 5280; // Convert knots to MPH
+                        const glideRatio = speed / totalSinkMPH;
+                        
+                        return {
+                            airSinkRate,
+                            speed: Math.round(speed * 10) / 10,
+                            gliderSinkKnots: Math.round(gliderSinkKnots * 100) / 100,
+                            totalSinkKnots: Math.round(totalSinkKnots * 100) / 100,
+                            glideRatio: Math.round(glideRatio * 10) / 10
+                        };
+                    });
+                    
+                    // Generate curve data
+                    const curveData = [];
+                    for (let s = Math.min(...speedArray); s <= Math.max(...speedArray); s += 0.5) {
+                        curveData.push({
+                            x: s,
+                            y: polyval(polar, s)
+                        });
+                    }
+                    
+                    setResults({
+                        calculations,
+                        polar,
+                        polarPrime,
+                        curveData,
+                        rawData: { speeds: speedArray, sinks: sinkRateKnots }
+                    });
+                    
+                } catch (error) {
+                    console.error('Calculation error:', error);
+                    alert('Error calculating speed-to-fly. Please check your input data.');
+                }
+            };
+
+            useEffect(() => {
+                calculateSpeedToFly();
+            }, []);
+
+            useEffect(() => {
+                if (results && chartRef.current) {
+                    if (chartInstance.current) {
+                        chartInstance.current.destroy();
+                    }
+
+                    const ctx = chartRef.current.getContext('2d');
+                    
+                    // Prepare tangent lines
+                    const tangentLines = results.calculations.map((calc, idx) => {
+                        const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6'];
+                        return {
+                            label: `${calc.airSinkRate}k sink`,
+                            data: [
+                                { x: 0, y: calc.airSinkRate },
+                                { x: calc.speed, y: calc.gliderSinkKnots }
+                            ],
+                            borderColor: colors[idx % colors.length],
+                            backgroundColor: colors[idx % colors.length],
+                            borderWidth: 2,
+                            pointRadius: 4,
+                            showLine: true,
+                            fill: false
+                        };
+                    });
+
+                    chartInstance.current = new Chart(ctx, {
+                        type: 'scatter',
+                        data: {
+                            datasets: [
+                                {
+                                    label: 'Glider Polar',
+                                    data: results.curveData,
+                                    borderColor: '#1e293b',
+                                    backgroundColor: '#1e293b',
+                                    borderWidth: 3,
+                                    pointRadius: 0,
+                                    showLine: true,
+                                    fill: false,
+                                    order: 1
+                                },
+                                {
+                                    label: 'Data Points',
+                                    data: results.rawData.speeds.map((s, i) => ({ 
+                                        x: s, 
+                                        y: results.rawData.sinks[i] 
+                                    })),
+                                    borderColor: '#dc2626',
+                                    backgroundColor: '#dc2626',
+                                    pointRadius: 5,
+                                    showLine: false,
+                                    order: 0
+                                },
+                                ...tangentLines
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            aspectRatio: 1.5,
+                            scales: {
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Airspeed (MPH)',
+                                        font: { size: 14, weight: 'bold' }
+                                    },
+                                    min: 0,
+                                    max: Math.max(...results.rawData.speeds) + 10,
+                                    grid: { color: '#e5e7eb' }
+                                },
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: 'Vertical Speed (knots)',
+                                        font: { size: 14, weight: 'bold' }
+                                    },
+                                    reverse: true,
+                                    min: sinkRateRange.max - 1,
+                                    max: Math.max(...results.rawData.sinks) + 1,
+                                    grid: { color: '#e5e7eb' }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    position: 'bottom',
+                                    labels: { boxWidth: 15, padding: 10, font: { size: 10 } }
+                                },
+                                title: {
+                                    display: true,
+                                    text: `${selectedGlider} - Speed-to-Fly Analysis`,
+                                    font: { size: 18, weight: 'bold' }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return `${context.dataset.label}: (${context.parsed.x.toFixed(1)} MPH, ${context.parsed.y.toFixed(2)} knots)`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                return () => {
+                    if (chartInstance.current) {
+                        chartInstance.current.destroy();
+                    }
+                };
+            }, [results, selectedGlider]);
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+                    <div className="max-w-7xl mx-auto">
+                        {/* Header */}
+                        <div className="text-center mb-8">
+                            <h1 className="text-4xl font-bold text-gray-800 mb-2">
+                                Glider Polar Speed-to-Fly Calculator
+                            </h1>
+                            <p className="text-gray-600">
+                                Calculate optimal speeds for different sink rates using mathematical polar analysis
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* Input Panel */}
+                            <div className="lg:col-span-1">
+                                <div className="bg-white rounded-lg shadow-lg p-6">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Input Data</h2>
+                                    
+                                    {/* Glider Selection */}
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Select Glider
+                                        </label>
+                                        <select 
+                                            value={selectedGlider}
+                                            onChange={(e) => handleGliderChange(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        >
+                                            {Object.keys(PRESET_GLIDERS).map(name => (
+                                                <option key={name} value={name}>{name}</option>
+                                            ))}
+                                        </select>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            {PRESET_GLIDERS[selectedGlider].description}
+                                        </p>
+                                    </div>
+
+                                    {/* Speed Data */}
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Speeds (MPH)
+                                        </label>
+                                        <textarea
+                                            value={speeds}
+                                            onChange={(e) => setSpeeds(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                                            rows="3"
+                                            placeholder="41, 45, 49, 52.5, 60, 70..."
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">Comma-separated values</p>
+                                    </div>
+
+                                    {/* Sink Rate Data */}
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Sink Rates (FPS)
+                                        </label>
+                                        <textarea
+                                            value={sinkRates}
+                                            onChange={(e) => setSinkRates(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                                            rows="3"
+                                            placeholder="3, 2.38, 2.4, 2.5, 2.9..."
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">Feet per second</p>
+                                    </div>
+
+                                    {/* Advanced Options Toggle */}
+                                    <button
+                                        onClick={() => setShowAdvanced(!showAdvanced)}
+                                        className="text-sm text-blue-600 hover:text-blue-800 mb-2"
+                                    >
+                                        {showAdvanced ? '− Hide' : '+ Show'} Advanced Options
+                                    </button>
+
+                                    {showAdvanced && (
+                                        <div className="mb-4 p-3 bg-gray-50 rounded-md">
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                Sink Rate Range (knots)
+                                            </label>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <div>
+                                                    <label className="text-xs text-gray-600">Min</label>
+                                                    <input
+                                                        type="number"
+                                                        value={sinkRateRange.min}
+                                                        onChange={(e) => setSinkRateRange({...sinkRateRange, min: parseFloat(e.target.value)})}
+                                                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-gray-600">Max</label>
+                                                    <input
+                                                        type="number"
+                                                        value={sinkRateRange.max}
+                                                        onChange={(e) => setSinkRateRange({...sinkRateRange, max: parseFloat(e.target.value)})}
+                                                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-gray-600">Step</label>
+                                                    <input
+                                                        type="number"
+                                                        value={sinkRateRange.step}
+                                                        onChange={(e) => setSinkRateRange({...sinkRateRange, step: parseFloat(e.target.value)})}
+                                                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Calculate Button */}
+                                    <button
+                                        onClick={calculateSpeedToFly}
+                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-md transition duration-200 shadow-md"
+                                    >
+                                        Calculate Speed-to-Fly
+                                    </button>
+
+                                    {/* Info Box */}
+                                    <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                                        <h3 className="text-sm font-semibold text-blue-900 mb-2">How it works</h3>
+                                        <p className="text-xs text-blue-800">
+                                            This tool fits a 4th-order polynomial to your glider polar data, 
+                                            then calculates tangent lines from different sink rates to find 
+                                            optimal speeds using calculus-based methods.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Results Panel */}
+                            <div className="lg:col-span-2">
+                                {/* Chart */}
+                                <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                                    <canvas ref={chartRef}></canvas>
+                                </div>
+
+                                {/* Results Table */}
+                                {results && (
+                                    <div className="bg-white rounded-lg shadow-lg p-6">
+                                        <h2 className="text-xl font-bold text-gray-800 mb-4">
+                                            Speed-to-Fly Table
+                                        </h2>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-sm">
+                                                <thead className="bg-gray-100">
+                                                    <tr>
+                                                        <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                                                            Air Sink Rate<br/>(knots)
+                                                        </th>
+                                                        <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                                                            Speed to Fly<br/>(MPH)
+                                                        </th>
+                                                        <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                                                            Glider Sink<br/>(knots)
+                                                        </th>
+                                                        <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                                                            Total Sink<br/>(knots)
+                                                        </th>
+                                                        <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                                                            Glide Ratio
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-200">
+                                                    {results.calculations.map((calc, idx) => (
+                                                        <tr key={idx} className="hover:bg-gray-50">
+                                                            <td className="px-4 py-3 font-semibold">
+                                                                {calc.airSinkRate === 0 ? '0 (Best Glide)' : calc.airSinkRate}
+                                                            </td>
+                                                            <td className="px-4 py-3">{calc.speed}</td>
+                                                            <td className="px-4 py-3">{calc.gliderSinkKnots}</td>
+                                                            <td className="px-4 py-3">{calc.totalSinkKnots}</td>
+                                                            <td className="px-4 py-3 font-semibold text-blue-600">
+                                                                {calc.glideRatio}:1
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        {/* Export Button */}
+                                        <button
+                                            onClick={() => {
+                                                const csv = ['Air Sink (knots),Speed (MPH),Glider Sink (knots),Total Sink (knots),Glide Ratio',
+                                                    ...results.calculations.map(c => 
+                                                        `${c.airSinkRate},${c.speed},${c.gliderSinkKnots},${c.totalSinkKnots},${c.glideRatio}`
+                                                    )].join('\n');
+                                                const blob = new Blob([csv], { type: 'text/csv' });
+                                                const url = URL.createObjectURL(blob);
+                                                const a = document.createElement('a');
+                                                a.href = url;
+                                                a.download = `${selectedGlider.replace(/\s+/g, '_')}_speed_to_fly.csv`;
+                                                a.click();
+                                            }}
+                                            className="mt-4 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition duration-200"
+                                        >
+                                            Export to CSV
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="mt-8 text-center text-sm text-gray-600">
+                            <p>Based on mathematical analysis of glider polars using 4th-order polynomial fitting</p>
+                            <p className="mt-1">Tangent line method for calculating speed-to-fly in various sink rates</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<GliderPolarCalculator />, document.getElementById('root'));
+    </script>
+</body>
+</html>
